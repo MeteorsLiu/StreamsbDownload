@@ -23,7 +23,12 @@ type StreamSB struct {
 	masterM3U8 *m3u8.Playlist
 	indexM3U8  *m3u8.Playlist
 	pool       *Pool
+	verbose    bool
 }
+
+const (
+	MAX_RETRY = 15
+)
 
 var (
 	matchVID     = regexp.MustCompile(`([0-9a-zA-Z]+)\.html$`)
@@ -45,6 +50,7 @@ func generateStr(n int) string {
 
 func getMasterURL(vid string) string {
 	reqParams := fmt.Sprintf("%s||%s||%s||streamsb", generateStr(12), vid, generateStr(12))
+	// this url is not fixed. It's required to update it manually.
 	return "https://sblongvu.com/sources49/" + hex.EncodeToString([]byte(reqParams))
 }
 
@@ -178,7 +184,7 @@ func getMaster(url string) (string, error) {
 
 }
 
-func Parse(url string) (*StreamSB, error) {
+func Parse(url string, isVerbose ...bool) (*StreamSB, error) {
 	m, err := getMaster(url)
 	if err != nil {
 		return nil, err
@@ -187,9 +193,15 @@ func Parse(url string) (*StreamSB, error) {
 	if err != nil {
 		return nil, err
 	}
+	verbose := true
+	if len(isVerbose) > 0 {
+		verbose = isVerbose[0]
+	}
 	return &StreamSB{
 		masterM3U8: mm,
-		pool:       NewPool(10, 10, 10),
+		// The usage of the worker pool is to control the download speed rate, which prevents downloading "too fast".
+		pool:    NewPool(10, 10, 10),
+		verbose: verbose,
 	}, nil
 }
 
@@ -248,27 +260,58 @@ func (s *StreamSB) Download(to string) {
 		fileMap[i], err = os.CreateTemp("", "*.ts")
 	}
 	wg.Add(s.indexM3U8.SegmentSize())
-	bar := progressbar.Default(int64(s.indexM3U8.SegmentSize()))
+	var bar *progressbar.ProgressBar
+	if s.verbose {
+		bar = progressbar.Default(int64(s.indexM3U8.SegmentSize()))
+	}
+	ctx, cancel := context.WithCancel(context.Background())
 	for index, item := range s.indexM3U8.Segments() {
 		s.pool.Schedule(func() {
 			defer wg.Done()
-			defer bar.Add(1)
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			if s.verbose {
+				defer bar.Add(1)
+			}
 			wid := <-workerCh
 			seg := <-segCh
 			f := fileMap[wid]
-			if err := downloadTS(seg.Segment, f); err != nil {
-				log.Println(err)
-				return
+			n := 1
+			// if one stream slice downloads fail, stop the whole program to prevent bad segments
+			for i := 0; i < n; i++ {
+				if err := downloadTS(seg.Segment, f); err != nil {
+					if n < MAX_RETRY {
+						n++
+						time.Sleep(time.Duration(n) * time.Second)
+						continue
+					}
+					cancel()
+					log.Println(err)
+					return
+				}
 			}
 			// replace the segments with the local file
 			seg.Segment = f.Name()
 		})
 		workerCh <- index
 		segCh <- item
-		log.Println(index)
 	}
 
 	wg.Wait()
+
+	select {
+	case <-ctx.Done():
+		if s.verbose {
+			log.Println("Some segments downloaded fail!")
+		}
+		return
+	default:
+	}
 	fs, _ := m3u8.Write(s.indexM3U8)
 
 	newM3U8, _ := os.CreateTemp("", "*.ts")
@@ -280,6 +323,10 @@ func (s *StreamSB) Download(to string) {
 	}()
 	if err = os.WriteFile(newM3U8.Name(), []byte(fs), 0755); err != nil {
 		log.Println(err)
+	}
+
+	if s.verbose {
+		log.Println("Waiting to convert stream to video...")
 	}
 
 	if err := convertVideo(newM3U8.Name(), to); err != nil {
