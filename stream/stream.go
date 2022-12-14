@@ -39,7 +39,7 @@ func generateStr(n int) string {
 
 func getMasterURL(vid string) string {
 	reqParams := fmt.Sprintf("%s||%s||%s||streamsb", generateStr(12), vid, generateStr(12))
-	return "https://sblongvu.com/sources48/" + hex.EncodeToString([]byte(reqParams))
+	return "https://sblongvu.com/sources49/" + hex.EncodeToString([]byte(reqParams))
 }
 
 func parseVID(url string) (string, error) {
