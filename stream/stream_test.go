@@ -5,7 +5,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	r, err := Parse("https://sblongvu.com/e/pynjd03yambo.html")
+	r, err := Parse("https://sblongvu.com/e/olok287zvvqe.html")
 	if err != nil {
 		t.Errorf("%v", err)
 		return
@@ -16,5 +16,5 @@ func TestParse(t *testing.T) {
 		t.Errorf("%v", err)
 		return
 	}
-	r.Download("/home/nfs/py/ttt.mp4")
+	r.Download("/home/nfs/py/yyy.mp4")
 }
