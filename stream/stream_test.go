@@ -11,7 +11,10 @@ func TestParse(t *testing.T) {
 		return
 	}
 
-	for _, v := range r.Items() {
-		t.Log(v.URI)
+	err = r.GetQualityM3U8()
+	if err != nil {
+		t.Errorf("%v", err)
+		return
 	}
+	t.Log(r.IndexString())
 }

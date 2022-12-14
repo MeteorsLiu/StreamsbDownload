@@ -144,10 +144,39 @@ func Parse(url string) (*StreamSB, error) {
 	}, nil
 }
 
-func (s *StreamSB) String() string {
+func (s *StreamSB) MasterString() string {
 	return s.masterM3U8.String()
 }
 
 func (s *StreamSB) Items() []*m3u8.PlaylistItem {
 	return s.masterM3U8.Playlists()
+}
+
+func (s *StreamSB) GetQualityM3U8() error {
+	max := 0
+	var qualityURL string
+	var err error
+	for _, item := range s.masterM3U8.Playlists() {
+		if !item.IFrame && max < item.Bandwidth {
+			max = item.Bandwidth
+			qualityURL = item.URI
+		}
+	}
+
+	s.indexM3U8, err = readM3U8(qualityURL)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StreamSB) IndexString() string {
+	if s.indexM3U8 != nil {
+		return s.indexM3U8.String()
+	}
+	return ""
+}
+
+func (s *StreamSB) Download() {
+
 }
