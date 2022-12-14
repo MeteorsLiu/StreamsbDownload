@@ -20,7 +20,7 @@ type StreamSB struct {
 }
 
 var (
-	matchVID     = regexp.MustCompile(`([0-9a-zA-Z]+)).html$`)
+	matchVID     = regexp.MustCompile(`([0-9a-zA-Z]+)\.html$`)
 	ErrMatchVID  = fmt.Errorf("cannot find a vid")
 	ErrGetMaster = fmt.Errorf("cannot get master m3u8")
 )
