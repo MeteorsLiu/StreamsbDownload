@@ -55,7 +55,7 @@ func readM3U8(url string) (*m3u8.Playlist, error) {
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9,zh-CN;q=0.8,zh-MO;q=0.7,zh;q=0.6")
@@ -72,7 +72,7 @@ func readM3U8(url string) (*m3u8.Playlist, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return m3u8.Read(resp.Body)
@@ -145,10 +145,6 @@ func Parse(url string) (*StreamSB, error) {
 	}, nil
 }
 
-func (s *StreamSB) String() []string {
-	var ret []string
-	for item := range s.masterM3U8.Playlists() {
-		ret = append(ret, item.String())
-	}
-	return ret
+func (s *StreamSB) String() string {
+	return s.masterM3U8.String()
 }
