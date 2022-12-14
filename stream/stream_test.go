@@ -16,5 +16,5 @@ func TestParse(t *testing.T) {
 		t.Errorf("%v", err)
 		return
 	}
-	t.Log(r.IndexString())
+	t.Log(r.Download())
 }

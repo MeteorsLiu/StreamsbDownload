@@ -17,6 +17,7 @@ import (
 type StreamSB struct {
 	masterM3U8 *m3u8.Playlist
 	indexM3U8  *m3u8.Playlist
+	pool       *Pool
 }
 
 var (
@@ -141,6 +142,7 @@ func Parse(url string) (*StreamSB, error) {
 	}
 	return &StreamSB{
 		masterM3U8: mm,
+		pool:       NewPool(20, 20, 20),
 	}, nil
 }
 
@@ -177,6 +179,11 @@ func (s *StreamSB) IndexString() string {
 	return ""
 }
 
-func (s *StreamSB) Download() {
-
+func (s *StreamSB) Download(to string) {
+	if s.indexM3U8 == nil {
+		return
+	}
+	for _, item := range s.indexM3U8.Segments() {
+		fmt.Println(item.Segment)
+	}
 }
