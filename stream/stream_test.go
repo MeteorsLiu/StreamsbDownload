@@ -11,5 +11,7 @@ func TestParse(t *testing.T) {
 		return
 	}
 
-	t.Log(r.String())
+	for i := range r.Items() {
+		t.Log(i.String())
+	}
 }

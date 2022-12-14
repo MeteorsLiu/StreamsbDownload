@@ -147,3 +147,7 @@ func Parse(url string) (*StreamSB, error) {
 func (s *StreamSB) String() string {
 	return s.masterM3U8.String()
 }
+
+func (s *StreamSB) Items() []*m3u8.PlaylistItem {
+	return s.masterM3U8.Playlists()
+}
