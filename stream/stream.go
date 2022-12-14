@@ -258,7 +258,7 @@ func (s *StreamSB) Download(to string) {
 	wg.Wait()
 
 	fs, _ := m3u8.Write(s.indexM3U8)
-	if err = os.WriteFile("t.m3u8", []byte(fs), "0755"); err != nil {
+	if err = os.WriteFile("t.m3u8", []byte(fs), 0755); err != nil {
 		log.Println(err)
 	}
 }
