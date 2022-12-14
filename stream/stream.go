@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"sync"
 	"time"
@@ -114,6 +115,17 @@ func downloadTS(url string, f *os.File) error {
 
 }
 
+func convertVideo(m3u8, to string) error {
+	cmd, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		return err
+	}
+	if err := exec.Command(cmd, "-y", "-i", m3u8, "-bsf:a", "aac_adtstoasc", "-c", "copy", "-vcodec", "copy", to).Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func getMaster(url string) (string, error) {
 	vid, err := parseVID(url)
 	if err != nil {
@@ -177,7 +189,7 @@ func Parse(url string) (*StreamSB, error) {
 	}
 	return &StreamSB{
 		masterM3U8: mm,
-		pool:       NewPool(20, 20, 20),
+		pool:       NewPool(10, 10, 10),
 	}, nil
 }
 
@@ -227,9 +239,9 @@ func (s *StreamSB) Download(to string) {
 	var wg sync.WaitGroup
 	defer func() {
 		for _, f := range fileMap {
-			//fn := f.Name()
+			fn := f.Name()
 			f.Close()
-			//os.Remove(fn)
+			os.Remove(fn)
 		}
 	}()
 	for i := 0; i < s.indexM3U8.SegmentSize(); i++ {
@@ -253,12 +265,25 @@ func (s *StreamSB) Download(to string) {
 		})
 		workerCh <- index
 		segCh <- item
+		log.Println(index)
 	}
 
 	wg.Wait()
-
 	fs, _ := m3u8.Write(s.indexM3U8)
-	if err = os.WriteFile("t.m3u8", []byte(fs), 0755); err != nil {
+
+	newM3U8, _ := os.CreateTemp("", "*.ts")
+
+	defer func() {
+		fn := newM3U8.Name()
+		newM3U8.Close()
+		os.Remove(fn)
+	}()
+	if err = os.WriteFile(newM3U8.Name(), []byte(fs), 0755); err != nil {
 		log.Println(err)
 	}
+
+	if err := convertVideo(newM3U8.Name(), to); err != nil {
+		log.Println(err)
+	}
+
 }
