@@ -12,6 +12,6 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, v := range r.Items() {
-		t.Log(v)
+		t.Log(v.URI)
 	}
 }
