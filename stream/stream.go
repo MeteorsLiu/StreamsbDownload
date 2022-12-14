@@ -6,12 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/etherlabsio/go-m3u8/m3u8"
+	progressbar "github.com/schollz/progressbar/v3"
 )
 
 type StreamSB struct {
@@ -77,6 +81,37 @@ func readM3U8(url string) (*m3u8.Playlist, error) {
 	}
 
 	return m3u8.Read(resp.Body)
+}
+
+func downloadTS(url string, f *os.File) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9,zh-CN;q=0.8,zh-MO;q=0.7,zh;q=0.6")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Origin", "https://sblongvu.com")
+	req.Header.Set("Referer", "https://sblongvu.com/")
+	req.Header.Set("Sec-Fetch-Dest", "empty")
+	req.Header.Set("Sec-Fetch-Mode", "cors")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
+	req.Header.Set("sec-ch-ua", `"Not?A_Brand";v="8", "Chromium";v="108", "Google Chrome";v="108"`)
+	req.Header.Set("sec-ch-ua-mobile", "?0")
+	req.Header.Set("sec-ch-ua-platform", `"Windows"`)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(f, resp.Body)
+
+	return err
+
 }
 
 func getMaster(url string) (string, error) {
@@ -181,9 +216,49 @@ func (s *StreamSB) IndexString() string {
 
 func (s *StreamSB) Download(to string) {
 	if s.indexM3U8 == nil {
-		return
+		if err := s.GetQualityM3U8(); err != nil {
+			return
+		}
 	}
-	for _, item := range s.indexM3U8.Segments() {
-		fmt.Println(item.Segment)
+	workerCh := make(chan int)
+	segCh := make(chan *m3u8.SegmentItem)
+	fileMap := map[int]*os.File{}
+	var err error
+	var wg sync.WaitGroup
+	defer func() {
+		for _, f := range fileMap {
+			//fn := f.Name()
+			f.Close()
+			//os.Remove(fn)
+		}
+	}()
+	for i := 0; i < s.indexM3U8.SegmentSize(); i++ {
+		fileMap[i], err = os.CreateTemp("", "*.ts")
+	}
+	wg.Add(s.indexM3U8.SegmentSize())
+	bar := progressbar.Default(int64(s.indexM3U8.SegmentSize()))
+	for index, item := range s.indexM3U8.Segments() {
+		s.pool.Schedule(func() {
+			defer wg.Done()
+			defer bar.Add(1)
+			wid := <-workerCh
+			seg := <-segCh
+			f := fileMap[wid]
+			if err := downloadTS(seg.Segment, f); err != nil {
+				log.Println(err)
+				return
+			}
+			// replace the segments with the local file
+			seg.Segment = f.Name()
+		})
+		workerCh <- index
+		segCh <- item
+	}
+
+	wg.Wait()
+
+	fs, _ := m3u8.Write(s.indexM3U8)
+	if err = os.WriteFile("t.m3u8", []byte(fs), "0755"); err != nil {
+		log.Println(err)
 	}
 }
