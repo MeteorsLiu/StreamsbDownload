@@ -115,7 +115,7 @@ func getMaster(url string) (string, error) {
 	}
 	jsret := map[string]any{}
 	json.Unmarshal(body, &jsret)
-	fmt.Println(jsret)
+	fmt.Println(string(body))
 	if statusCode, ok := jsret["status_code"]; ok {
 		if statusCode.(int) != 200 {
 			return "", ErrGetMaster
