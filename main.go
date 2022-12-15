@@ -28,7 +28,7 @@ func main() {
 	for scanner.Scan() {
 		ret := strings.SplitN(scanner.Text(), ":", 2)
 		link := ret[1]
-		path := "/home/nfs/py/" + strings.Split(ret[0], "_")[0] + "/" + ret[0]
+		path := "/home/nfs/py/" + strings.Split(ret[0], "_")[0] + "/" + ret[0] + ".mp4"
 		s, err := stream.Parse(link)
 		if err != nil {
 			fmt.Println(err)
