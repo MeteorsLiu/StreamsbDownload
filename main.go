@@ -25,7 +25,10 @@ func main() {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		ret := strings.SplitN(scanner.Text(), ":", 2)
-		fmt.Println(len(ret), ret[0], ret[1])
+		link := ret[1]
+		dir := "/home/nfs/py/" + strings.Split(ret[0], "_")[0]
+		name := ret[0]
+		fmt.Println(dir, name, link)
 	}
 
 }
