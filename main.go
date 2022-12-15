@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/MeteorsLiu/StreamsbDownload/stream"
 )
 
 func main() {
@@ -26,9 +28,14 @@ func main() {
 	for scanner.Scan() {
 		ret := strings.SplitN(scanner.Text(), ":", 2)
 		link := ret[1]
-		dir := "/home/nfs/py/" + strings.Split(ret[0], "_")[0]
-		name := ret[0]
-		fmt.Println(dir, name, link)
+		path := "/home/nfs/py/" + strings.Split(ret[0], "_")[0] + "/" + ret[0]
+		s, err := stream.Parse(link)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		fmt.Println("Download to ", path)
+		s.Download(path)
 	}
 
 }

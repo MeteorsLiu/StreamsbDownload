@@ -241,6 +241,9 @@ func (s *StreamSB) IndexString() string {
 func (s *StreamSB) Download(to string) {
 	if s.indexM3U8 == nil {
 		if err := s.GetQualityM3U8(); err != nil {
+			if s.verbose {
+				log.Println(err)
+			}
 			return
 		}
 	}
