@@ -24,7 +24,7 @@ func main() {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		ret := strings.Split(scanner.Text(), ":")
+		ret := strings.SplitAfterN(scanner.Text(), ":", 2)
 		fmt.Println(ret[0], ret[1])
 	}
 
